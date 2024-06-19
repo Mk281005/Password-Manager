@@ -10,6 +10,7 @@ const [passarr, setpassarr] = useState([])
 useEffect(() => {
   let passwords = localStorage.getItem("password")
   if(passwords){
+    
     setpassarr(JSON.parse(passwords))
   }
 }, [])
