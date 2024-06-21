@@ -13,11 +13,19 @@ function Manage() {
   const [form, setform] = useState({key :"", site: "", nam: "", pass: "" });
   const [passarr, setpassarr] = useState([]);
   const [copy, setcopy] = useState("/src/assets/copy.svg");
+
+  const getpasswords = async () => {
+    let req =await fetch("http://localhost:3000");
+    let passwords = await req.json()
+    
+      setpassarr(passwords);
+      console.log(passwords)
+    
+  }
+  
   useEffect(() => {
-    let passwords = localStorage.getItem("password");
-    if (passwords) {
-      setpassarr(JSON.parse(passwords));
-    }
+    getpasswords()
+   
   }, []);
   useEffect(() => {
     console.log(passarr);
@@ -29,23 +37,30 @@ function Manage() {
     setType(newType);
     setImg(newImg);
   };
-  const savepass = () => {
-    console.log(form.key);
-    if(form.key===""){
-    if (form.site.length !== 0 && form.pass.length !== 0 && form.nam.length !== 0) {
-      const newPass = { ...form, key: uuidv4() };
-      const updatedPassarr = [...passarr, newPass];
-      setpassarr(updatedPassarr);
-      localStorage.setItem("password", JSON.stringify(updatedPassarr));
-      setform({ key: "", site: "", nam: "", pass: "" });
-    }}
-    else{
-      const idx = passarr.findIndex((item) => item.key === form.key);
-      passarr[idx]=form;
-      setpassarr(passarr);
-      localStorage.setItem("password", JSON.stringify(passarr));
-      setform({ key: "", site: "", nam: "", pass: "" });
-    }
+  const savepass = async () => {   
+      if (form.site.length !== 0 && form.pass.length !== 0 && form.nam.length !== 0) {
+          const newPass = { ...form, key: uuidv4() };
+          const updatedPassarr = [...passarr, newPass];
+          setpassarr(updatedPassarr);
+          // localStorage.setItem("password", JSON.stringify(updatedPassarr));
+          try {
+              let res = await fetch("http://localhost:3000", {
+                  method: "POST",
+                  headers: {
+                      "Content-Type": "application/json" // Removed the extra space here
+                  },
+                  body: JSON.stringify({ ...form, key: uuidv4() })
+              });
+              if (!res.ok) {
+                  throw new Error('Network response was not ok');
+              }
+          } catch (error) {
+              console.error('There was a problem with your fetch operation:', error);
+          }
+          setform({ key: "", site: "", nam: "", pass: "" });
+      }
+  
+   
   };
 
   const handlechange = (e) => {
@@ -66,17 +81,58 @@ function Manage() {
     });
     navigator.clipboard.writeText(e);
   };
-  const deletepass = (e) => {
+  const deletepass = async (e) => {
+    toast("Deleted your password", {
+      position: "top-right",
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+      progress: undefined,
+      transition: Bounce, 
+      theme: "dark",
+    });
+    try {
+        console.log(e);
+        const newPassArr = passarr.filter((item) => item.key !== e);
+        const idx = passarr.findIndex((item) => item.key === e);
+        let newPass = passarr[idx];
+        console.log(newPass)
+        let res = await fetch("http://localhost:3000"
+          , {
+            method: "DELETE",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ id: newPass.id })
+        });
+
+        if (!res.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        setpassarr(newPassArr);
+    } catch (error) {
+        console.error('There was a problem with the fetch operation:', error);
+    }
+};
+  const editpass= async(e) => {
     console.log(e);
-    const newPassArr = passarr.filter(item => item.key !== e);
-    localStorage.setItem("password",JSON.stringify(newPassArr))
+    const pass = passarr.find((item) => item.key === e);
+    const newPassArr = passarr.filter((item) => item.key !== e);
     setpassarr(newPassArr);
-  }
-  const editpass=(e) => {
-    console.log(e);
-    const newform = passarr.find((item) => item.key === e);
-    console.log(newform);
-    setform(newform)
+    console.log(pass);
+    let res = await fetch("http://localhost:3000"
+      , {
+        method: "DELETE",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ id: pass.id })
+    });
+
+    setform(pass)
   }
   
 
@@ -199,7 +255,7 @@ function Manage() {
                   </td>
                   <td>
                     <div className="flex justify-center gap-2">
-                      {item.pass}
+                      {'*'.repeat(item.pass.length)}
                       <img
                         src={copy}
                         className="w-4 cursor-pointer"
